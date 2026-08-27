@@ -1,41 +1,54 @@
+#Corrected the window title from Buyer Dashboard to Admin Dashboard.
+#Replaced undefined current_user_id with login.
+#Corrected the search function names.
+#Connected manager.py using open_manager().
+#Removed the Sell button because Admin is not a Seller in the Phase 2 schema.
+#Added logout behavior.
 import tkinter as tk
 
 from status_list import open_auction_statuses
 from auction_dashboard import open_auction_search
 from item_dashboard import open_item_search
-from sell_item import open_sell_item
 from edit_profile import open_edit_profile
-from manager import manager 
+from manager import open_manager
+from admin_records import open_admin_records
+
 
 def open_admin_dashboard(root, connection, login):
 
-    # Hide the login window
+    # Hide the login window.
     root.withdraw()
 
     dashboard = tk.Toplevel(root)
-    dashboard.title("Buyer Dashboard")
-    dashboard.geometry("500x500")
+    dashboard.title("Admin Dashboard")
+    dashboard.geometry("500x620")
 
     title_label = tk.Label(
         dashboard,
-        text="Buyer Dashboard",
+        text="Admin Dashboard",
         font=("Arial", 22, "bold")
     )
-    title_label.pack(pady=30)
+    title_label.pack(pady=25)
+
+    welcome_label = tk.Label(
+        dashboard,
+        text=f"Welcome, {login}"
+    )
+    welcome_label.pack(pady=5)
 
     # Auction Statuses
     auction_status_button = tk.Button(
         dashboard,
-        text="Auction Statuses",
+        text="All Auction Statuses",
         width=25,
         height=2,
         command=lambda: open_auction_statuses(
             dashboard,
             connection,
-            current_user_id
+            login
         )
     )
-    auction_status_button.pack(pady=10)
+    auction_status_button.pack(pady=8)
 
     # Search Auction
     search_auction_button = tk.Button(
@@ -43,13 +56,13 @@ def open_admin_dashboard(root, connection, login):
         text="Search Auction",
         width=25,
         height=2,
-        command=lambda: open_search_auction(
+        command=lambda: open_auction_search(
             dashboard,
             connection,
-            current_user_id
+            login
         )
     )
-    search_auction_button.pack(pady=10)
+    search_auction_button.pack(pady=8)
 
     # Search Item
     search_item_button = tk.Button(
@@ -57,27 +70,38 @@ def open_admin_dashboard(root, connection, login):
         text="Search Item",
         width=25,
         height=2,
-        command=lambda: open_search_item(
+        command=lambda: open_item_search(
             dashboard,
-            connection,
-            current_user_id
+            connection
         )
     )
-    search_item_button.pack(pady=10)
+    search_item_button.pack(pady=8)
 
-    # Sell
-    sell_button = tk.Button(
+    # Manage Roles and Auctions
+    manager_button = tk.Button(
         dashboard,
-        text="Sell",
+        text="Manage Roles/Auctions",
         width=25,
         height=2,
-        command=lambda: open_sell_item(
+        command=lambda: open_manager(
             dashboard,
-            connection,
-            current_user_id
+            connection
         )
     )
-    sell_button.pack(pady=10)
+    manager_button.pack(pady=8)
+    
+    # Manage Items, Payments, and Shipments
+    records_button = tk.Button(
+        dashboard,
+        text="Manage Project Records",
+        width=25,
+        height=2,
+        command=lambda: open_admin_records(
+            dashboard,
+            connection
+        )
+    )
+    records_button.pack(pady=8)
 
     # Edit Profile
     edit_profile_button = tk.Button(
@@ -88,20 +112,26 @@ def open_admin_dashboard(root, connection, login):
         command=lambda: open_edit_profile(
             dashboard,
             connection,
-            current_user_id
+            login
         )
     )
-    edit_profile_button.pack(pady=10)
+    edit_profile_button.pack(pady=8)
 
-    manager_button = tk.Button(
+    # Return to the login screen.
+    def logout():
+        dashboard.destroy()
+        root.deiconify()
+
+    logout_button = tk.Button(
         dashboard,
-        text="Manage Roles/Auctions",
+        text="Log Out",
         width=25,
-        height=2,
-        command=lambda: manager(
-            dashboard,
-            connection,
-            current_user_id
-        )
+        command=logout
     )
-    manager_button.pack(pady=10)
+    logout_button.pack(pady=15)
+
+    # Closing the dashboard also returns to the login screen.
+    dashboard.protocol(
+        "WM_DELETE_WINDOW",
+        logout
+    )

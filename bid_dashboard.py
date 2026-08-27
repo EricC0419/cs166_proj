@@ -1,301 +1,311 @@
+#Fixed the undefined bid_amount variable.
+#Added checks for invalid, negative, equal, or lower bids.
+#Blocked bidding on closed auctions and your own auction.
+#Recorded the logged-in buyer and updated current_highest_bid.
+#Added commit(), rollback(), and row locking so the database stays consistent.
+from decimal import Decimal, InvalidOperation
 import tkinter as tk
 
 
-def open_bid(parent, conn, auction_id, buyer_login):
-
-    # Create bid window
+# Opens the bidding window for a selected auction.
+def open_bid(parent, connection, auction_id, buyer_login):
     bid_window = tk.Toplevel(parent)
-
     bid_window.title("Place Bid")
     bid_window.geometry("500x400")
 
-    # Get current auction information
+    # Load the current bid when the window first opens.
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT current_highest_bid
+                FROM auction
+                WHERE auction_id = %s;
+                """,
+                (auction_id,)
+            )
 
-    cursor = conn.cursor()
+            result = cursor.fetchone()
 
-    cursor.execute(
-        """
-        SELECT
-            seller_login,
-            current_highest_bid,
-            auction_status
-        FROM auction
-        WHERE auction_id = %s;
-        """,
-        (auction_id,)
-    )
+    except Exception as error:
+        connection.rollback()
 
-    auction = cursor.fetchone()
+        tk.Label(
+            bid_window,
+            text=f"Database error: {error}",
+            fg="red"
+        ).pack(pady=20)
 
-    cursor.close()
+        return
 
+    if not result:
+        tk.Label(
+            bid_window,
+            text="Auction not found",
+            fg="red"
+        ).pack(pady=20)
 
-    seller_login = auction[0]
-    current_highest_bid = auction[1]
-    auction_status = auction[2]
+        return
 
-
-    # Place bid function
-
+    # Validates and records the user's bid.
     def place_bid():
+        try:
+            bid_amount = Decimal(
+                bid_entry.get().strip()
+            )
 
-        bid_input = bid_entry.get()
-        # Bid must be positive
+        except (InvalidOperation, ValueError):
+            status_label.config(
+                text="Enter a valid dollar amount",
+                fg="red"
+            )
+            return
+
         if bid_amount <= 0:
             status_label.config(
-                text="Bid must be greater than $0"
+                text="Bid must be greater than $0",
+                fg="red"
             )
             return
-        cursor = conn.cursor()
 
-        # Get newest auction information
-        cursor.execute(
-            """
-            SELECT
-                seller_login,
-                current_highest_bid,
-                auction_status
-            FROM auction
-            WHERE auction_id = %s;
-            """,
-            (auction_id,)
-        )
-        current_auction = cursor.fetchone()
-        current_seller = current_auction[0]
-        current_bid = current_auction[1]
-        current_status = current_auction[2]
+        try:
+            with connection.cursor() as cursor:
+                # Lock the auction row while checking and updating the bid.
+                # This prevents two users from changing it simultaneously.
+                cursor.execute(
+                    """
+                    SELECT
+                        seller_login,
+                        current_highest_bid,
+                        auction_status
+                    FROM auction
+                    WHERE auction_id = %s
+                    FOR UPDATE;
+                    """,
+                    (auction_id,)
+                )
 
+                auction = cursor.fetchone()
 
-        # Check auction status
-        if current_status != "Active":
+                if not auction:
+                    raise ValueError(
+                        "Auction no longer exists"
+                    )
+
+                seller_login = auction[0]
+                current_bid = auction[1]
+                auction_status = auction[2]
+
+                # Only active auctions accept bids.
+                if auction_status != "Active":
+                    raise ValueError(
+                        "This auction is closed"
+                    )
+
+                # Sellers cannot bid on their own auctions.
+                if buyer_login == seller_login:
+                    raise ValueError(
+                        "You cannot bid on your own auction"
+                    )
+
+                # A new bid must be greater than the current highest bid.
+                if bid_amount <= current_bid:
+                    raise ValueError(
+                        f"Bid must be higher than ${current_bid}"
+                    )
+
+                # Generate the next bid ID.
+                cursor.execute(
+                    """
+                    SELECT COALESCE(MAX(bid_id), 0) + 1
+                    FROM bid;
+                    """
+                )
+
+                bid_id = cursor.fetchone()[0]
+
+                # Store the new bid.
+                cursor.execute(
+                    """
+                    INSERT INTO bid (
+                        bid_id,
+                        auction_id,
+                        buyer_login,
+                        buyer_role,
+                        bid_amount
+                    )
+                    VALUES (%s, %s, %s, 'Buyer', %s);
+                    """,
+                    (
+                        bid_id,
+                        auction_id,
+                        buyer_login,
+                        bid_amount
+                    )
+                )
+
+                # Update the auction's current highest bid.
+                cursor.execute(
+                    """
+                    UPDATE auction
+                    SET current_highest_bid = %s
+                    WHERE auction_id = %s;
+                    """,
+                    (bid_amount, auction_id)
+                )
+
+            connection.commit()
+
+        except ValueError as error:
+            connection.rollback()
             status_label.config(
-                text="This auction is closed"
+                text=str(error),
+                fg="red"
             )
-
-            cursor.close()
-
             return
 
-
-        # Seller cannot bid on own auction
-
-        if buyer_login == current_seller:
-
+        except Exception as error:
+            connection.rollback()
             status_label.config(
-                text="You cannot bid on your own auction"
+                text=f"Bid failed: {error}",
+                fg="red"
             )
-            cursor.close()
             return
-        # New bid must be higher
-        if bid_amount <= current_bid:
 
-            status_label.config(
-                text="Bid must be higher than $" + str(current_bid)
-            )
-
-            cursor.close()
-
-            return
-        # Generate bid ID adds one to the current max of the bid and sets it as new bid_id
-        cursor.execute(
-            """
-            SELECT COALESCE(MAX(bid_id), 0) + 1 
-            FROM bid;
-            """
-        )
-
-        bid_id = cursor.fetchone()[0]
-        # Insert new bid
-        cursor.execute(
-            """
-            INSERT INTO bid (
-                bid_id,
-                auction_id,
-                buyer_login,
-                buyer_role,
-                bid_amount
-            )
-            VALUES (%s, %s, %s, %s, %s);
-            """,
-            (
-                bid_id,
-                auction_id,
-                buyer_login,
-                "Buyer",
-                bid_amount
-            )
-        )
-        # Update highest bid
-        cursor.execute(
-            """
-            UPDATE auction
-            SET current_highest_bid = %s
-            WHERE auction_id = %s;
-            """,
-            (
-                bid_amount,
-                auction_id
-            )
-        )
-        # Save changes
-        conn.commit()
-        cursor.close()
-        # Update GUI
         current_bid_value.config(
-            text="$" + str(bid_amount)
+            text=f"${bid_amount:.2f}"
         )
+
         status_label.config(
-            text="Bid placed successfully"
+            text="Bid placed successfully",
+            fg="green"
         )
-    # GUI title
-    title = tk.Label(
+
+        bid_entry.delete(0, tk.END)
+
+    # --------------------------------------------------
+    # Bid interface
+    # --------------------------------------------------
+
+    tk.Label(
         bid_window,
         text="Place Bid",
         font=("Arial", 20)
-    )
-
-    title.grid(
+    ).grid(
         row=0,
         column=0,
         columnspan=2,
         pady=20
     )
-    # Auction ID
 
-    auction_label = tk.Label(
+    tk.Label(
         bid_window,
         text="Auction ID:"
-    )
-
-    auction_label.grid(
+    ).grid(
         row=1,
         column=0,
         padx=10,
-        pady=10
+        pady=8
     )
 
-
-    auction_value = tk.Label(
+    tk.Label(
         bid_window,
         text=str(auction_id)
-    )
-
-    auction_value.grid(
+    ).grid(
         row=1,
         column=1,
         padx=10,
-        pady=10
+        pady=8
     )
 
-    # Buyer
-
-    buyer_label = tk.Label(
+    tk.Label(
         bid_window,
         text="Buyer:"
-    )
-
-    buyer_label.grid(
+    ).grid(
         row=2,
         column=0,
         padx=10,
-        pady=10
+        pady=8
     )
 
-
-    buyer_value = tk.Label(
+    tk.Label(
         bid_window,
         text=buyer_login
-    )
-
-    buyer_value.grid(
+    ).grid(
         row=2,
         column=1,
         padx=10,
-        pady=10
+        pady=8
     )
 
-
-    # Current highest bid
-
-    current_bid_label = tk.Label(
+    tk.Label(
         bid_window,
         text="Current Highest Bid:"
-    )
-
-    current_bid_label.grid(
+    ).grid(
         row=3,
         column=0,
         padx=10,
-        pady=10
+        pady=8
     )
-
 
     current_bid_value = tk.Label(
         bid_window,
-        text="$" + str(current_highest_bid)
+        text=f"${result[0]}"
     )
-
     current_bid_value.grid(
         row=3,
         column=1,
         padx=10,
-        pady=10
+        pady=8
     )
 
-
-    # New bid
-
-    bid_label = tk.Label(
+    tk.Label(
         bid_window,
         text="Your Bid:"
-    )
-
-    bid_label.grid(
+    ).grid(
         row=4,
         column=0,
         padx=10,
-        pady=10
+        pady=8
     )
-
 
     bid_entry = tk.Entry(
         bid_window,
         width=20
     )
-
     bid_entry.grid(
         row=4,
         column=1,
         padx=10,
-        pady=10
+        pady=8
     )
 
-
-    # Place bid button
-
-    bid_button = tk.Button(
+    tk.Button(
         bid_window,
         text="Place Bid",
         command=place_bid
-    )
-
-    bid_button.grid(
+    ).grid(
         row=5,
         column=0,
         columnspan=2,
         pady=15
     )
 
-    # Status message
-
     status_label = tk.Label(
         bid_window,
-        text=""
+        text="",
+        fg="red",
+        wraplength=450
     )
-
     status_label.grid(
         row=6,
         column=0,
         columnspan=2,
         pady=10
+    )
+
+    # Pressing Enter also submits the bid.
+    bid_entry.bind(
+        "<Return>",
+        lambda _event: place_bid()
     )
