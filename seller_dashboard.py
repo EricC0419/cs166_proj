@@ -1,40 +1,32 @@
-#Replaced undefined current_user_id with the real login.
-#Replaced nonexistent open_search_auction and open_search_item names.
-#Removed Buyer’s Sell button because listings require a Seller account.
-#Added a logout path so closing the dashboard doesn’t leave the hidden app running.
-
 import tkinter as tk
 
-from status_list import open_auction_statuses
 from auction_dashboard import open_auction_search
-from item_dashboard import open_item_search
 from edit_profile import open_edit_profile
+from item_dashboard import open_item_search
+from sell_item import open_sell_item
+from status_list import open_auction_statuses
+from close_auction import open_close_auction
 
 
-def open_buyer_dashboard(root, connection, login):
-
-    # Hide the login window.
+def open_seller_dashboard(root, connection, login):
     root.withdraw()
 
     dashboard = tk.Toplevel(root)
-    dashboard.title("Buyer Dashboard")
-    dashboard.geometry("500x500")
+    dashboard.title("Seller Dashboard")
+    dashboard.geometry("500x620")
 
-    title_label = tk.Label(
+    tk.Label(
         dashboard,
-        text="Buyer Dashboard",
+        text="Seller Dashboard",
         font=("Arial", 22, "bold")
-    )
-    title_label.pack(pady=25)
+    ).pack(pady=25)
 
-    welcome_label = tk.Label(
+    tk.Label(
         dashboard,
         text=f"Welcome, {login}"
-    )
-    welcome_label.pack(pady=5)
+    ).pack(pady=5)
 
-    # Auction Statuses
-    auction_status_button = tk.Button(
+    tk.Button(
         dashboard,
         text="Auction Statuses",
         width=25,
@@ -44,11 +36,9 @@ def open_buyer_dashboard(root, connection, login):
             connection,
             login
         )
-    )
-    auction_status_button.pack(pady=8)
+    ).pack(pady=7)
 
-    # Search Auction
-    search_auction_button = tk.Button(
+    tk.Button(
         dashboard,
         text="Search Auction",
         width=25,
@@ -58,24 +48,47 @@ def open_buyer_dashboard(root, connection, login):
             connection,
             login
         )
-    )
-    search_auction_button.pack(pady=8)
+    ).pack(pady=7)
 
-    # Search Item
-    search_item_button = tk.Button(
+    tk.Button(
         dashboard,
-        text="Search Item",
+        text="Search Items",
         width=25,
         height=2,
         command=lambda: open_item_search(
             dashboard,
             connection
         )
-    )
-    search_item_button.pack(pady=8)
+    ).pack(pady=7)
 
-    # Edit Profile
-    edit_profile_button = tk.Button(
+    tk.Button(
+        dashboard,
+        text="Sell or Update Item",
+        width=25,
+        height=2,
+        command=lambda: open_sell_item(
+            dashboard,
+            connection,
+            login
+        )
+    ).pack(pady=7)
+
+    # Close Auction
+    close_auction_button = tk.Button(
+        dashboard,
+        text="Close Auction",
+        width=25,
+        height=2,
+        command=lambda: open_close_auction(
+            dashboard,
+            connection,
+            login
+        )
+    )
+    
+    close_auction_button.pack(pady=7)
+
+    tk.Button(
         dashboard,
         text="Edit Profile",
         width=25,
@@ -85,23 +98,19 @@ def open_buyer_dashboard(root, connection, login):
             connection,
             login
         )
-    )
-    edit_profile_button.pack(pady=8)
+    ).pack(pady=7)
 
-    # Return to the login screen.
     def logout():
         dashboard.destroy()
         root.deiconify()
 
-    logout_button = tk.Button(
+    tk.Button(
         dashboard,
         text="Log Out",
         width=25,
         command=logout
-    )
-    logout_button.pack(pady=15)
+    ).pack(pady=15)
 
-    # Closing the dashboard also returns to the login screen.
     dashboard.protocol(
         "WM_DELETE_WINDOW",
         logout
