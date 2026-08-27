@@ -2,6 +2,7 @@ import tkinter as tk
 from admin_dashboard import open_admin_dashboard
 from seller_dashboard import open_seller_dashboard
 from buyer_dashboard import open_buyer_dashboard
+from register import open_register
 
 
 def open_login(root, conn):
@@ -118,7 +119,7 @@ def open_login(root, conn):
         fg="red"
     )
     status_label.grid(
-        row=3,
+        row=4,
         column=0,
         columnspan=2
     )
@@ -133,6 +134,21 @@ def open_login(root, conn):
         row=2,
         column=0,
         columnspan=2
+    )
+    register_button = tk.Button(
+        root,
+        text="Create Account",
+        command=lambda: open_register(
+            root,
+            conn
+        )
+    )
+
+    register_button.grid(
+        row=3,
+        column=0,
+        columnspan=2,
+        pady=5
     )
 
     password_entry.bind(

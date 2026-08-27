@@ -11,6 +11,7 @@ from auction_dashboard import open_auction_search
 from item_dashboard import open_item_search
 from edit_profile import open_edit_profile
 from manager import open_manager
+from admin_records import open_admin_records
 
 
 def open_admin_dashboard(root, connection, login):
@@ -20,7 +21,7 @@ def open_admin_dashboard(root, connection, login):
 
     dashboard = tk.Toplevel(root)
     dashboard.title("Admin Dashboard")
-    dashboard.geometry("500x540")
+    dashboard.geometry("500x620")
 
     title_label = tk.Label(
         dashboard,
@@ -88,6 +89,19 @@ def open_admin_dashboard(root, connection, login):
         )
     )
     manager_button.pack(pady=8)
+    
+    # Manage Items, Payments, and Shipments
+    records_button = tk.Button(
+        dashboard,
+        text="Manage Project Records",
+        width=25,
+        height=2,
+        command=lambda: open_admin_records(
+            dashboard,
+            connection
+        )
+    )
+    records_button.pack(pady=8)
 
     # Edit Profile
     edit_profile_button = tk.Button(

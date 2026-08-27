@@ -201,15 +201,71 @@ database, recreate the database before the final presentation rehearsal.
 
 ---
 
-# Suggested Ten-Minute Presentation Order
+## 12. Account Registration
 
-1. Introduce the PostgreSQL auction system and its three roles.
-2. Demonstrate one invalid and one valid Buyer login.
-3. Search for an item and auction.
-4. Place one invalid bid and one valid bid.
-5. Show Buyer auction status and profile update.
-6. Log in as Seller and create or update an item.
-7. Close an auction.
-8. Log in as Admin and show role and auction management.
-9. Briefly explain the indexes and transaction rollback.
-10. End by mentioning that every major function has normal and edge tests.
+### Normal Case
+
+- Login: `demo_buyer`
+- Password and Confirmation: `demopass`
+- Phone: `555-7777`
+- Address: `7 Demo Street`
+- Expected: The account is created with the default Buyer role.
+- The new user can log in and open the Buyer Dashboard.
+
+### Edge Case
+
+- Enter different values for Password and Confirm Password.
+- Expected: The screen displays `Passwords do not match`.
+- No account is inserted.
+
+---
+
+## 13. Admin Item Management
+
+### Normal Case
+
+- Select a disposable demo item.
+- Click Remove Selected Item and confirm.
+- Expected: The item and its related auction records are removed.
+
+### Edge Case
+
+- Do not select an item.
+- Click Remove Selected Item.
+- Expected: The screen displays `Select an item first`.
+- No data is deleted.
+
+---
+
+## 14. Admin Payment Management
+
+### Normal Case
+
+- Select Payment `401`.
+- Change its status to `Pending`.
+- Expected: The table refreshes and displays `Pending`.
+
+### Edge Case
+
+- Do not select a payment.
+- Click Update Payment Status.
+- Expected: The screen displays `Select a payment first`.
+- No payment changes.
+
+---
+
+## 15. Admin Shipment Management
+
+### Normal Case
+
+- Select Shipment `501`.
+- Change its status to `Delivered`.
+- Enter tracking number `DEMO-DELIVERED-501`.
+- Expected: The updated status and tracking number appear after refresh.
+
+### Edge Case
+
+- Do not select a shipment.
+- Click Update Shipment.
+- Expected: The screen displays `Select a shipment first`.
+- No shipment changes.
