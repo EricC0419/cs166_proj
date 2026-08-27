@@ -1,8 +1,8 @@
 import tkinter as tk
-
+import open_bid from bid_dashboard
 
 # Bid window
-def open_bid(parent, conn, auction_id):
+def open_bid(parent, conn, auction_id, buyer_login):
 
     bid_window = tk.Toplevel(parent)
 
@@ -59,10 +59,7 @@ def open_auction_search(dashboard, conn):
     search_window.title("Search Auction")
     search_window.geometry("500x500")
 
-
-    # --------------------------------------------------
     # Search function
-    # --------------------------------------------------
 
     def search_auction():
 
@@ -96,9 +93,7 @@ def open_auction_search(dashboard, conn):
         cursor.close()
 
 
-        # --------------------------------------------------
         # Auction found
-        # --------------------------------------------------
 
         if auction:
 
@@ -121,7 +116,8 @@ def open_auction_search(dashboard, conn):
                 command=lambda: open_bid(
                     search_window,
                     conn,
-                    auction[0]
+                    auction[0],
+                    buyer_login
                 )
             )
 
