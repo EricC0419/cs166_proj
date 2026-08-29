@@ -64,6 +64,7 @@ def open_manager(parent, connection):
                 parent=window
             )
 
+
     def update_role():
         selected = user_tree.selection()
 
@@ -75,7 +76,9 @@ def open_manager(parent, connection):
             )
             return
 
-        login = user_tree.item(selected[0], "values")[0]
+        values = user_tree.item(selected[0], "values")
+        login = values[0]
+        current_role = values[1]
         new_role = role_choice.get()
 
         if not new_role:
@@ -86,8 +89,79 @@ def open_manager(parent, connection):
             )
             return
 
+        if new_role == current_role:
+            messagebox.showinfo(
+                "No Change",
+                f"{login} is already a {new_role}.",
+                parent=window
+            )
+            return
+
         try:
             with connection.cursor() as cursor:
+                # A Seller cannot change roles while seller records still
+                 #(login, 'Seller') in item or auction. 
+                if current_role == "Seller" and new_role != "Seller":
+                    cursor.execute(
+                        """
+                        SELECT
+                            EXISTS (
+                                SELECT 1
+                                FROM item
+                                WHERE seller_login = %s
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM auction
+                                WHERE seller_login = %s
+                            );
+                        """,
+                        (login, login)
+                    )
+
+                    if cursor.fetchone()[0]:
+                        messagebox.showwarning(
+                            "Role Change Not Allowed",
+                            f"{login} cannot be changed from Seller because "
+                            "this user still has seller items or auctions.",
+                            parent=window
+                        )
+                        return
+
+                # A Buyer cannot change roles while buyer records still
+                # reference (login, 'Buyer') in bid/payment/winner fields.
+                if current_role == "Buyer" and new_role != "Buyer":
+                    cursor.execute(
+                        """
+                        SELECT
+                            EXISTS (
+                                SELECT 1
+                                FROM bid
+                                WHERE buyer_login = %s
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM payment
+                                WHERE buyer_login = %s
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM auction
+                                WHERE winner_login = %s
+                            );
+                        """,
+                        (login, login, login)
+                    )
+
+                    if cursor.fetchone()[0]:
+                        messagebox.showwarning(
+                            "Role Change Not Allowed",
+                            f"{login} cannot be changed from Buyer because the schema won't let me"
+                            "if I can change the schema and end the check edgecase then this would work",
+                            parent=window
+                        )
+                        return
+
                 cursor.execute(
                     """
                     UPDATE users
