@@ -156,7 +156,7 @@ def open_manager(parent, connection):
                     if cursor.fetchone()[0]:
                         messagebox.showwarning(
                             "Role Change Not Allowed",
-                            f"{login} cannot be changed from Buyer because the schema won't let me"
+                            f"{login} cannot be changed from Buyer because the schema won't let me, only works with new users"
                             "if I can change the schema and end the check edgecase then this would work",
                             parent=window
                         )
